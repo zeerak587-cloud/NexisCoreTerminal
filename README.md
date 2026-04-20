@@ -66,7 +66,7 @@ cargo --version
 Clone the repository:
 
 ```powershell
-git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git
+git clone https://github.com/zeerak587-cloud/NexisCoreTerminal/
 cd YOUR-REPO
 ```
 
