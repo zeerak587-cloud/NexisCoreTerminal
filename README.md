@@ -1,6 +1,6 @@
 # NEXISCORE GUI
 <p align="center">
-  <img src="<img width="700" alt="Main UI Screenshot" src="https://github.com/user-attachments/assets/6520c4cd-8339-4861-be6b-62b627f2eb86" />
+  <img src="https://github.com/user-attachments/assets/6520c4cd-8339-4861-be6b-62b627f2eb86" width="700" alt="Main UI Screenshot">
 </p>
 
 NEXISCORE GUI is a small Rust desktop file manager built with `eframe`/`egui`.
