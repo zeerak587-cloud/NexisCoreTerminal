@@ -2,6 +2,12 @@ use eframe::{egui, NativeOptions};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
+
+const SPLASH_DURATION: Duration = Duration::from_secs(5);
+const BACKDROP_FILE: &str = "OPEN.png";
+const BACKDROP_FALLBACK_FILE: &str = "OPEN.png";
+const WELCOME_SOUND_FILE: &str = "welcome.wav";
 
 #[derive(Clone)]
 struct Config {
@@ -52,6 +58,10 @@ struct AppState {
     new_file_content: String,
     message: String,
     fonts_loaded: bool,
+    started_at: Instant,
+    welcome_played: bool,
+    splash_load_attempted: bool,
+    splash_texture: Option<egui::TextureHandle>,
 }
 
 impl AppState {
@@ -65,10 +75,75 @@ impl AppState {
             self.entries.sort_by_key(|e| e.file_name());
         }
     }
+
+    fn load_splash_texture(&mut self, ctx: &egui::Context) {
+        if self.splash_load_attempted {
+            return;
+        }
+
+        self.splash_load_attempted = true;
+        let image_path = find_asset(BACKDROP_FILE).or_else(|| find_asset(BACKDROP_FALLBACK_FILE));
+        let image_bytes = image_path.as_ref().map(fs::read);
+
+        let Some(Ok(image_bytes)) = image_bytes else {
+            self.message = format!("Splash image missing: assets/{}", BACKDROP_FILE);
+            return;
+        };
+
+        let Ok(image) = image::load_from_memory(&image_bytes) else {
+            self.message = format!("Failed to load splash image: assets/{}", BACKDROP_FILE);
+            return;
+        };
+
+        let image = image.to_rgba8();
+        let size = [image.width() as usize, image.height() as usize];
+        let color_image = egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw());
+        self.splash_texture = Some(ctx.load_texture(
+            "startup_backdrop",
+            color_image,
+            egui::TextureOptions::LINEAR,
+        ));
+    }
+
+    fn show_splash(&mut self, ctx: &egui::Context) {
+        self.load_splash_texture(ctx);
+        ctx.request_repaint_after(Duration::from_millis(16));
+
+        egui::CentralPanel::default()
+            .frame(egui::Frame::none().fill(egui::Color32::BLACK))
+            .show(ctx, |ui| {
+                let available = ui.max_rect();
+
+                if let Some(texture) = &self.splash_texture {
+                    let texture_size = texture.size_vec2();
+                    let scale = (available.width() / texture_size.x)
+                        .max(available.height() / texture_size.y);
+                    let image_size = texture_size * scale;
+                    let image_rect = egui::Rect::from_center_size(available.center(), image_size);
+                    let uv = egui::Rect::from_min_max(
+                        egui::Pos2::new(0.0, 0.0),
+                        egui::Pos2::new(1.0, 1.0),
+                    );
+
+                    ui.painter()
+                        .image(texture.id(), image_rect, uv, egui::Color32::WHITE);
+                }
+            });
+    }
 }
 
 impl eframe::App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if !self.welcome_played {
+            play_welcome_sound();
+            self.welcome_played = true;
+        }
+
+        if self.started_at.elapsed() < SPLASH_DURATION {
+            self.show_splash(ctx);
+            return;
+        }
+
         // Load custom font once
         if !self.fonts_loaded {
             let mut fonts = egui::FontDefinitions::default();
@@ -339,6 +414,10 @@ fn main() {
         new_file_content: String::new(),
         message: String::from("[ OK ] Environment Ready"),
         fonts_loaded: false,
+        started_at: Instant::now(),
+        welcome_played: false,
+        splash_load_attempted: false,
+        splash_texture: None,
     };
 
     // initial refresh
@@ -352,3 +431,56 @@ fn main() {
     )
     .expect("failed to start NEXISCORE GUI");
 }
+
+fn find_asset(file_name: &str) -> Option<PathBuf> {
+    let current_dir_asset = std::env::current_dir()
+        .ok()
+        .map(|path| path.join("assets").join(file_name));
+
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(PathBuf::from));
+
+    let exe_dir_asset = exe_dir
+        .as_ref()
+        .map(|path| path.join("assets").join(file_name));
+
+    let project_dir_asset = exe_dir
+        .as_ref()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .map(|path| path.join("assets").join(file_name));
+
+    [current_dir_asset, exe_dir_asset, project_dir_asset]
+        .into_iter()
+        .flatten()
+        .find(|path| path.exists())
+}
+
+#[cfg(windows)]
+fn play_welcome_sound() {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr;
+    use winapi::um::playsoundapi::{PlaySoundW, SND_ASYNC, SND_FILENAME, SND_NODEFAULT};
+
+    let Some(sound_path) = find_asset(WELCOME_SOUND_FILE) else {
+        return;
+    };
+
+    let sound_path: Vec<u16> = OsStr::new(&sound_path)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    unsafe {
+        PlaySoundW(
+            sound_path.as_ptr(),
+            ptr::null_mut(),
+            SND_ASYNC | SND_FILENAME | SND_NODEFAULT,
+        );
+    }
+}
+
+#[cfg(not(windows))]
+fn play_welcome_sound() {}
