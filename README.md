@@ -67,7 +67,7 @@ Clone the repository:
 
 ```powershell
 git clone https://github.com/zeerak587-cloud/NexisCoreTerminal/
-cd YOUR-REPO
+cd NexisCoreTerminal
 ```
 
 Build the debug executable:
