@@ -110,7 +110,7 @@ impl AppState {
         ctx.request_repaint_after(Duration::from_millis(16));
 
         egui::CentralPanel::default()
-            .frame(egui::Frame::none().fill(egui::Color32::BLACK))
+            .frame(egui::Frame::NONE.fill(egui::Color32::BLACK))
             .show(ctx, |ui| {
                 let available = ui.max_rect();
 
@@ -133,6 +133,9 @@ impl AppState {
 }
 
 impl eframe::App for AppState {
+	fn ui(&mut self, _ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    // leave empty
+}
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if !self.welcome_played {
             play_welcome_sound();
@@ -150,7 +153,7 @@ impl eframe::App for AppState {
             // Embed the font at compile time. Ensure assets/font.ttf exists.
             fonts.font_data.insert(
                 "my_font".to_owned(),
-                egui::FontData::from_static(include_bytes!("../assets/font.ttf")),
+                egui::FontData::from_static(include_bytes!("../assets/font.ttf")).into(),
             );
 
             // Put it first in the Proportional family so default labels use it
@@ -171,20 +174,20 @@ impl eframe::App for AppState {
             self.fonts_loaded = true;
         }
 
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        egui::Panel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new("NEXISCORE TERMINAL GUI").heading());
                 ui.separator();
                 ui.label(format!("[ {} ]", self.config.symbol_for_root));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button("Exit").clicked() {
-                        _frame.close();
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
             });
         });
 
-        egui::SidePanel::left("left_panel")
+        egui::Panel::left("left_panel")
             .resizable(true)
             .show(ctx, |ui| {
                 ui.heading("Folders");
@@ -427,7 +430,7 @@ fn main() {
     eframe::run_native(
         "NEXISCORE GUI",
         native_options,
-        Box::new(|_cc| Box::new(app)),
+        Box::new(|_cc| Ok(Box::new(app))),
     )
     .expect("failed to start NEXISCORE GUI");
 }
