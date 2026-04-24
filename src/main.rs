@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 const SPLASH_DURATION: Duration = Duration::from_secs(5);
 const BACKDROP_FILE: &str = "OPEN.png";
 const BACKDROP_FALLBACK_FILE: &str = "OPEN.png";
-const WELCOME_SOUND_FILE: &str = "welcome.wav";
+const WELCOME_SOUND_FILE: &str = "welcome.wav"
 
 #[derive(Clone)]
 struct Config {
@@ -457,30 +457,28 @@ fn find_asset(file_name: &str) -> Option<PathBuf> {
         .find(|path| path.exists())
 }
 
-#[cfg(windows)]
 fn play_welcome_sound() {
-    use std::ffi::OsStr;
-    use std::os::windows::ffi::OsStrExt;
-    use std::ptr;
-    use winapi::um::playsoundapi::{PlaySoundW, SND_ASYNC, SND_FILENAME, SND_NODEFAULT};
+    use rodio::{Decoder, OutputStream, Sink};
+    use std::fs::File;
+    use std::io::BufReader;
 
-    let Some(sound_path) = find_asset(WELCOME_SOUND_FILE) else {
+    let Some(path) = find_asset(WELCOME_SOUND_FILE) else {
         return;
     };
 
-    let sound_path: Vec<u16> = OsStr::new(&sound_path)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
+    let Ok((_stream, handle)) = OutputStream::try_default() else {
+        return;
+    };
 
-    unsafe {
-        PlaySoundW(
-            sound_path.as_ptr(),
-            ptr::null_mut(),
-            SND_ASYNC | SND_FILENAME | SND_NODEFAULT,
-        );
-    }
+    let Ok(file) = File::open(path) else {
+        return;
+    };
+
+    let Ok(source) = Decoder::new(BufReader::new(file)) else {
+        return;
+    };
+
+    let sink = Sink::try_new(&handle).unwrap();
+    sink.append(source);
+    sink.detach();
 }
-
-#[cfg(not(windows))]
-fn play_welcome_sound() {}
