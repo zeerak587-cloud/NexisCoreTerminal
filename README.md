@@ -5,6 +5,8 @@
 
 <p align="center"><i>Main interface showing file navigation and preview panel</i></p>
 
+## NOT RECOMMENDED FOR < 1 GB DRIVES
+
 NEXISCORE GUI is a small Rust desktop file manager built with `eframe`/`egui`.
 It opens a protected `environment/` workspace, lets you create folders and text
 files, preview file contents, and delete files or directories with confirmation.
