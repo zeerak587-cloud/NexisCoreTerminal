@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 const SPLASH_DURATION: Duration = Duration::from_secs(5);
 const BACKDROP_FILE: &str = "OPEN.png";
 const BACKDROP_FALLBACK_FILE: &str = "OPEN.png";
-const WELCOME_SOUND_FILE: &str = "welcome.wav"
+const WELCOME_SOUND_FILE: &str = "welcome.wav";
 
 #[derive(Clone)]
 struct Config {
